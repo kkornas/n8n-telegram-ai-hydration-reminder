@@ -1,0 +1,2966 @@
+{
+  "name": "Telegram AI Hydration Reminder",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Startup-Workflow\n\n### Key Features\n1. Load global environmental constants from the .env file.\n     - .env is used for sensitive parameters such as passwords and API keys, don't  hardcode them directly into the workflow :-) \n2. Get Workflow Constants from \"DrinkWater CONFIG\" Sub Workflow\n     - contains Main Configuration, Timings, Flags etc.\n     - called at the beginning of each path\n     - using a sub-workflow centralizes configuration -> avoid creating individual configurations in each path. Great - don't need to update many Node Parameters ;-)\n     - with global buffers  $getWorkflowStaticData('global') I encountered issues during development, making it difficult to reset their state when restarting and/or switching between development and production runs \n \n3. initialize Workflow Variables to 0 \n  - n8n has a lot of bugs: stateful/Stale Data Bug, data persistence issues and Cache Invalidation Problem\n  - -> this node helped me allot while developing (single Execution and also in Production)",
+        "height": 592,
+        "width": 640
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2368,
+        -288
+      ],
+      "typeVersion": 1,
+      "id": "5498e5a0-fb4a-48df-a81e-06d9c5d736b1",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Reminder-Workflow\n\n### Key Features\n1. Generates a \"Hydration & Why\" reminder message using the Ollama API -> model configuration located in the \"DrinkWater CONFIG\" sub-workflow. It Includes the current weather according to the temperature \n2. Sends the reminder message via Telegram -> Telegram configuration (Bot Token, Chat ID) in the .env constants.\n3. Sends a Telegram callback message with buttons, allowing the user to log their water intake by selecting the amount consumed.\n\n### Schedule Configuration \nFirst Trigger node:\n* Production: Hourly, between 8:00 and 22:00 (Cron expression: 0 8-22 * * *)\n* For testing in Production Mode, it is recommended to set the trigger interval to 1 minute.",
+        "height": 512,
+        "width": 656
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2368,
+        352
+      ],
+      "typeVersion": 1,
+      "id": "ac715820-86d4-47b6-90cd-3dda4dd6e7cd",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Telegram Input Handler Workflow\n\n### Key Features\n1. This sub-workflow runs every 15 seconds to process button clicks (callbacks) and text inputs sent from the main flow.\n2. It calculates the total water intake and generates the message to inform the user.\n3. Text inputs will be analysed by the model",
+        "height": 352,
+        "width": 656
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2368,
+        992
+      ],
+      "typeVersion": 1,
+      "id": "cbdcb8a4-6e01-455f-a9cc-58be5253f66d",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "events": [
+          "activate"
+        ]
+      },
+      "type": "n8n-nodes-base.n8nTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2336,
+        160
+      ],
+      "id": "06fd007e-0c0c-4117-a05a-5d55e071814e",
+      "name": "Trigger: Startup"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    OLLAMA_API_URI: $env[\"OLLAMA_API_URI\"],\n    TELEGRAM_BOT_TOKEN: $env[\"TELEGRAM_BOT_TOKEN\"],\n    TELEGRAM_CHAT_ID:  $env[\"TELEGRAM_CHAT_ID\"]\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1648,
+        64
+      ],
+      "id": "6211f8ab-4d3f-4de9-afa5-beba6fdac654",
+      "name": "Get: .env Constants",
+      "notesInFlow": true,
+      "notes": "# Environmental Constants\nDefine environmental constants in a `.env` file located in the same directory as your `docker-compose.yml` file.\n\n# Example `.env` file:\n# ~/n8n$ cat .env\n# OLLAMA_API_URI=http://your_hostname:11434\n# TELEGRAM_BOT_TOKEN=\"your_bot_token\"\n# TELEGRAM_CHAT_ID=\"your_chat_id\"\n# ...\n\n# Ensure these environment variables are accessible within your n8n nodes by modifying your docker-compose.yml file:\n\n# environment:\n#   ...\n#   - N8N_BLOCK_ENV_ACCESS_IN_NODE=false  # Required to access .env variables in nodes\n\n# env_file:\n#   - .env  # Load environment variables from the .env file\n\n# Do not forget to restart the n8n container:\n# docker compose down && docker compose up -d"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "mhjxhBEOr6BpQWVY",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/mhjxhBEOr6BpQWVY",
+          "cachedResultName": "DrinkWater CONFIG"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -1648,
+        208
+      ],
+      "name": "Get: Workflow Constants ",
+      "id": "175671e1-2027-40fa-a44a-ac822a80f4d5",
+      "notesInFlow": true,
+      "notes": "This call returns the constants from Sub Workflow \"DrinkWater Config\"\n\nWith this method we have only one single definition of constants for production and debug mode for each path.\nCurrently unused: Detection of Prod or Debug via\nconst isProd = $workflow.active === true  || $execution?.mode === 'production'  || !!$input.first()?.json.__isProduction;\n\n\n"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "mhjxhBEOr6BpQWVY",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/mhjxhBEOr6BpQWVY",
+          "cachedResultName": "Telegram AI Hydration Reminder CONFIG"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -2096,
+        688
+      ],
+      "name": "Get: Workflow Constants 1",
+      "id": "dcf986a7-cb53-498b-89f1-402d2529a626"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "mhjxhBEOr6BpQWVY",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/mhjxhBEOr6BpQWVY",
+          "cachedResultName": "DrinkWater CONFIG"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -2096,
+        1168
+      ],
+      "name": "Get: Workflow Constants 2",
+      "id": "f63450e2-8dc2-4b1a-8314-9c2e47f8d54d"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d6ea3e14-e677-4af0-8fab-9c2033731973",
+              "leftValue": "={{ $json.drunkAmount }}",
+              "rightValue": "={{ $('Get: Workflow Constants 1').item.json.config.dailyGoal }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1424,
+        688
+      ],
+      "id": "a895fd0c-81cc-434c-9883-6ff65821363a",
+      "name": "Check: Daily Goal Reached"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data =  $getWorkflowStaticData('global');\nconst language = $('Get: Workflow Constants 1').first().json.config.language || 'en';\n\n// Ensure drunkAmount is a number.  If not, initialize it to 0.\nif (typeof data.drunkAmount !== 'number') {  data.drunkAmount = 0;}\n\n// Get the daily goal from the configuration (Sub Workflow)\nconst dailyGoal = $('Get: Workflow Constants 1').first().json.config.dailyGoal;\n\n\nconst translations = {\n  en: {\n    goalReached:\n      `🎉🎉🎉\\n\\nCongratulations! You reached your daily goal 👏👏👏\\n\\nDrank: ${data.drunkAmount} ml\\n\\nSee you tomorrow!`,\n\n    exceededGoal:\n      `🎉🎉🎉\\n\\nCongratulations! You reached your daily goal of ${dailyGoal} ml and even drank ${data.drunkAmount - dailyGoal} ml more.\\nGreat job 👏👏👏\\n\\nSee you tomorrow!`\n  },\n\n  de: {\n    goalReached:\n      `🎉🎉🎉\\n\\nGratulation! Du hast dein Tagesziel erreicht 👏👏👏\\n\\nGetrunkene Menge: ${data.drunkAmount} ml\\n\\nBis morgen!`,\n\n    exceededGoal:\n      `🎉🎉🎉\\n\\nGratulation! Du hast dein Tagesziel von ${dailyGoal} ml erreicht und sogar ${data.drunkAmount - dailyGoal} ml mehr getrunken.\\nTolle Leistung 👏👏👏\\n\\nBis morgen!`\n  }\n};\n\nlet text = translations[language].goalReached;\n\nif (data.drunkAmount > dailyGoal) {\n  text = translations[language].exceededGoal;\n}\n\nreturn [{\n  json: {\n    text: text\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        496
+      ],
+      "id": "2d36ad76-e715-419f-afe2-667053e11183",
+      "name": "Build: Daily Goal Reached Message"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{$env[\"TELEGRAM_BOT_TOKEN\"]}}/sendMessage",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{$env[\"TELEGRAM_CHAT_ID\"]}}"
+            },
+            {
+              "name": "text",
+              "value": "={{ \"------------------------------------------------------------\\n\\nHydration AI Reminder Bot \" + $('Get: Workflow Constants ').item.json.config.version +  \"\\n\\n------------------------------------------------------------\\ninitFinished: \" + $json.data.initFinished + \"\\n------------------------------------------------------------\" }}\n"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1216,
+        208
+      ],
+      "id": "27042176-97b7-48c5-8bc5-6f543c7aa6d1",
+      "name": "Telegram API: Send Startup Message"
+    },
+    {
+      "parameters": {
+        "method": "=POST",
+        "url": "=https://api.telegram.org/bot{{$env[\"TELEGRAM_BOT_TOKEN\"]}}/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{$env[\"TELEGRAM_CHAT_ID\"]}}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -976,
+        496
+      ],
+      "id": "124e7459-ab2d-426f-a911-4338a511ec7b",
+      "name": "Telegram API: Send Message"
+    },
+    {
+      "parameters": {
+        "jsCode": "// global variable storage\nconst data = $getWorkflowStaticData('global');\n\n// lock all workflows \ndata.mainLock = true;\ndata.subLock = true;\ndata.aggroLock = true;\n\ndata.initFinished = false;\n\n// ------------------------------------\n// RESET ALL GLOBAL STATE\n// ------------------------------------\nObject.keys(data).forEach(key => {\n  delete data[key];\n});\n\n\n// ------------------------------------\n// DEFAULT VALUES\n// ------------------------------------\nObject.assign(data, {\n  // init\n  initFinished: true,\n  firstMainRunDone: false,\n\n  // reminder state\n  goodMorningFinished: false,\n  goodMorningMessageFinished: false,\n\n  // counters\n  unansweredFlowCount: 0,\n  offset: 0,\n\n  // drink tracking\n  drunkAmount: 0,\n\n  // collections\n  pendingReminders: [],\n  processedCallbacks: {},\n  processedInputs: [],\n\n  // model histories\n  aggroMessagesHistory: [],\n  modelMessagesHistory: [],\n\n  // locks\n  mainLock: false,\n  mainLockTime: null,\n  subLock: false,\n  subLockTime: null,\n  aggroLock: false,\n  aggroLockTime: null    \n});\n\n\n// ------------------------------------\n// RETURN DEBUG INFO\n// ------------------------------------\nreturn [{\n  json: {\n    success: true,\n    message: \"Global state reset complete\",\n    data\n  }\n}];\n\n\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1424,
+        208
+      ],
+      "id": "9ef75d33-2957-46ce-97a6-1a8c469bd770",
+      "name": "Set: Init Workflow Variables"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n\n// Variable to store the amount of liquid consumed in milli liters.\nif (data.drunkAmount === undefined) {\n  data.drunkAmount = 0;\n}\n\n// Buffer to store pending reminder callbacks.\nif (!data.pendingReminders) {\n  data.pendingReminders = [];\n}\n\n// Flag to indicate whether the good morning message has been sent.\nif (data.goodMorningMessageFinished === undefined) {\n  data.goodMorningMessageFinished = false;\n}\n\nconst isProd = $workflow.active === true \n                 || $execution?.mode === 'production'\n                 || !!$input.first()?.json.__isProduction;\nlet bufferReset = false;\nconst debug = $('Get: Workflow Constants 1').first().json.config.debug;\n\n// reset for local debugging\nif (!isProd && debug){\n \n  // counters\n  data.unansweredFlowCount= 0;\n  data.offset= 0;\n\n  // drink tracking\n  data.drunkAmount= 0;\n\n  // collections\n  data.pendingReminders= [];\n  data.processedCallbacks= {};\n  data.processedInputs= [];\n\n  // model histories\n  data.aggroMessagesHistory= [];\n  data.modelMessagesHistory= [];\n  bufferReset=true;\n}\n\nreturn [{\n  json: {\n    drunkAmount: data.drunkAmount,\n    goodMorningMessageFinished: data.goodMorningMessageFinished,\n    bufferReset :bufferReset,\n    data\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1648,
+        688
+      ],
+      "id": "3f85e1eb-01f8-43e8-ade8-a887911cb0aa",
+      "name": "Set: Init Reminder Variables",
+      "notesInFlow": true,
+      "notes": "Important for debugging!"
+    },
+    {
+      "parameters": {
+        "jsCode": "// global variable storage\nconst data = $getWorkflowStaticData('global');\n\n// lock all workflows \ndata.mainLock = true;\ndata.subLock = true;\ndata.aggroLock = true;\n\ndata.initFinished = false;\n\n// ------------------------------------\n// RESET ALL GLOBAL STATE\n// ------------------------------------\nObject.keys(data).forEach(key => {\n  delete data[key];\n});\n\n\n// ------------------------------------\n// DEFAULT VALUES\n// ------------------------------------\nObject.assign(data, {\n  // init\n  initFinished: true,\n  firstMainRunDone: false,\n\n  // reminder state\n  goodMorningFinished: false,\n  goodMorningMessageFinished: false,\n\n  // counters\n  unansweredFlowCount: 0,\n  offset: 0,\n\n  // drink tracking\n  drunkAmount: 0,\n\n  // collections\n  pendingReminders: [],\n  processedCallbacks: {},\n  processedInputs: [],\n\n  // model histories\n  aggroMessagesHistory: [],\n  modelMessagesHistory: [],\n\n  // locks\n  mainLock: false,\n  mainLockTime: null,\n  subLock: false,\n  subLockTime: null,\n  aggroLock: false,\n  aggroLockTime: null    \n});\n\n\n// ------------------------------------\n// RETURN DEBUG INFO\n// ------------------------------------\nreturn [{\n  json: {\n    success: true,\n    message: \"Global state reset complete\",\n    data\n  }\n}];\n\n\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        496
+      ],
+      "id": "3e528080-5824-4c44-9d68-f60573d27ca4",
+      "name": "Set: Init Workflow Variables1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n\ndata.mainLock = false;\n\nreturn data;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        496
+      ],
+      "id": "7533825a-0838-4a1a-b0d5-8b3f6194da02",
+      "name": "Set: Reminder-Workflow Unlock "
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n\ndata.mainLock = false;\n\nreturn data;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        496
+      ],
+      "id": "6d33d958-4ce1-49df-81bc-342708cfbb8d",
+      "name": "Set: Reminder-Workflow Unlock 1"
+    },
+    {
+      "parameters": {
+        "url": "https://geocoding-api.open-meteo.com/v1/search",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "={ \"name\": \"{{ $('Get: Workflow Constants 1').first().json.config.weatherLocation }}\", \"count\": \"1\", \"language\": \"de\", \"format\": \"json\" } ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1200,
+        688
+      ],
+      "id": "c17092d0-f6c8-48d9-a7fc-108dd2f3aeb0",
+      "name": "HTTPS: Get Geo Data",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://api.open-meteo.com/v1/forecast",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "latitude",
+              "value": "={{ $json.results[0].latitude }}"
+            },
+            {
+              "name": "longitude",
+              "value": "={{ $json.results[0].longitude }}"
+            },
+            {
+              "name": "current",
+              "value": "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,rain,cloud_cover,wind_speed_10m,pressure_msl,weather_code"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -976,
+        688
+      ],
+      "id": "c5725e0c-89fb-4b6a-a5bc-3f4dcb9d7e64",
+      "name": "HTTPS: Get Weather Data",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const language = $('Get: Workflow Constants 1').first().json.config.language || 'en';\n\nconst current = $json.current;\n\nlet weather = \"not available\";\n\n// Check if current weather data is available.\nif (!current) {\n  return [{\n    json: {\n      success: false,\n      weather\n    }\n  }];\n}\n\nconst temperature = current.temperature_2m;\nconst weatherCode = current.weather_code;\n\nconst labels = {\n  en: {\n    sunny: \"sunny ☀️\",\n    partly: \"partly cloudy 🌤️\",\n    cloudy: \"cloudy ☁️\",\n    rainy: \"rainy 🌧️\"\n  },\n  de: {\n    sunny: \"sonnig ☀️\",\n    partly: \"leicht bewölkt 🌤️\",\n    cloudy: \"bewölkt ☁️\",\n    rainy: \"regnerisch 🌧️\"\n  }\n};\n\nconst t = labels[language] || labels.en;\n\n// Weather mapping\nif (weatherCode === 0) {\n  weather = `${temperature}°C ${t.sunny}`;\n} \nelse if ([1, 2].includes(weatherCode)) {\n  weather = `${temperature}°C ${t.partly}`;\n}\nelse if (weatherCode === 3) {\n  weather = `${temperature}°C ${t.cloudy}`;\n}\nelse if (weatherCode >= 51 && weatherCode <= 67) {\n  weather = `${temperature}°C ${t.rainy}`;\n}\n\nreturn [{\n  json: {\n    success: true,\n    temperature,\n    weather\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        688
+      ],
+      "id": "85430a49-57cc-4cbb-8be2-0ac510e3e24c",
+      "name": "Build: Humanize Weather Data"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8-22 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -2320,
+        688
+      ],
+      "id": "3954234b-65f7-4c19-ad7b-4d82a629ec76",
+      "name": "Trigger: Schedule Hourly 8 to 22"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\nconst language = $('Get: Workflow Constants 1').first().json.config.language || 'en';\n\nconst header = `TRINK WASSER ‼️‼️‼️\\n\\n`;\nlet prompt = \"\";\nconst temperature =  $('Get: Workflow Constants 1').first().json.config.temperatureHot;\nconst weatherInfo = $json.weather\n  ? `Aktuelles Wetter: ${$json.weather}`\n  : \"\";\n\n\n// ---------------------------\n// GOOD MORNING MESSAGE\n// ---------------------------\nif (data.goodMorningMessageFinished === false) {\n\n  prompt = `\n    Erzeuge eine freundliche, motivierende Trink-Wasser-Erinnerung auf ${language} (Sprachcode).\n    \n    Regeln:\n    - Beginne mit: \"Guten Morgen! ☀️\" bzw. \"Good morning! ☀️\" je nach Sprachcode\n    - Leite gerne ein, dass du hier bist um zu helfen!\n    - Danach Zeilenumbruch\n    - Freundlicher, motivierender Ton\n    - Erkläre kurz, warum Trinken wichtig ist\n    - Nutze abwechslungsreich:\n      - Allgemeinwissen\n      - kurze Gesundheitsfakten\n      - Motivation\n    - Emojis erlaubt, aber sparsam einsetzen\n    - wenn es passt Bulletpoints verwenden\n    - 5 bis 6 kurze Sätze\n    - Wetter natürlich einbauen, falls vorhanden\n    - wenn über ${temperature} °C heiß, in den Vordergrung stellen z.B.Es wird heute extrem heiß!, nutze Zeilenumbrüche geschickt\n    - Keine Begrüßung am Ende\n    - Keine Alternativen\n    - Keine Meta-Erklärung\n    - Keine Einleitung oder Erklärung\n    - Gib ausschließlich die fertige Nachricht zurück\n    \n    Format:\n    - Am Ende IMMER ein Zeilenumbruch\n    - Danach einen Hinweis wie:\n    \"👉 Vergiss nicht, deine Trinkmenge einzutragen..Sonst melde ich mich⚠️ \n    \n    WICHTIG:\n    - Sprachcode: \"${language}\" Finale Anwort IMMER in diese Sprache übersetzen\n    \n    ${weatherInfo}\n    `.trim();\n\n  data.goodMorningMessageFinished = true;\n\n  return [{\n    json: {\n      prompt,\n      goodMorningMessageFinished:data.goodMorningMessageFinished\n    }\n  }];\n}\n\n\n\nconst promptNormal =  `\nErzeuge eine freundliche, motivierende Trink-Wasser-Erinnerung auf ${language} (Sprachcode)\n\nRegeln:\n- Beginne IMMER mit einem Slogan: z.B. \"${header}\" \n- Freundlicher, motivierender und/oder \"cooler\" Ton\n- Erkläre kurz, warum Trinken wichtig ist\n- Nutze abwechslungsreich:\n  - Allgemeinwissen\n  - kurze Gesundheitsfakten\n  - Motivation\n- Emojis erlaubt, aber sparsam einsetzen\n- wenn es passt Bulletpoints verwenden\n- 2 bis 4 kurze Sätze\n- Keine Begrüßung am Ende\n- Keine Alternativen\n- Keine Meta-Erklärung\n- Keine Einleitung oder Erklärung\n- Gib ausschließlich die fertige Nachricht zurück\nWICHTIG:\n    - Sprachcode: \"${language}\" Finale Anwort IMMER in diese Sprache übersetzen!\n`.trim();\n\n\nif (  $json.success && ($json.temperature >  $('Get: Workflow Constants 1').first()      .json.config.temperatureHot )) {\n\n  // ---------------------------\n  // HOT WEATHER REMINDER\n  // ---------------------------\n  \n   prompt = `${promptNormal}\n             \n             - Es wird heute über ${temperature} °C heiß, stell dies in den Vordergrund, nutze dafür Zeilenumbrüche geschickt\n             - Wetter natürlich einbauen, falls vorhanden\n            ${weatherInfo}\n            `.trim();\n\n} else {\n\n  // ---------------------------\n  // NORMAL REMINDER\n  // ---------------------------\n  prompt = promptNormal;\n}\n\nlet promptUseHistory =\"\";\n\nif ($('Get: Workflow Constants 1').first().json.config.usePromptHistory){\n  const messageHistory =  data.modelMessagesHistory?.join('\\n- ') || '';\n  \n  promptUseHistory = `\n  WICHTIG:\n  Vermeide ähnliche oder gleiche Formulierungen wie in diesen früheren Nachrichten.\n  \n  Bisherige Nachrichten:\n  - ${messageHistory}\n  \n  Erzeuge nun eine neue, abwechslungsreiche Nachricht.\n  `.trim();  \n  \n  prompt = `${prompt} \n            ${promptUseHistory}\n            `.trim();\n\n}\n\nreturn [{\n  json: {\n    prompt : prompt\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        688
+      ],
+      "id": "cea02009-a3ce-44a0-aaa8-ce2cf0ff3733",
+      "name": "Build: Prompt for Reminder Message "
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e4d79012-9f45-4fe2-aa31-1630af7f88b5",
+              "leftValue": "={{ $json.error.message }}",
+              "rightValue": "query is too old",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "=",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -80,
+        688
+      ],
+      "id": "cd63a1c1-036d-43bf-9a5f-202776fc68c3",
+      "name": "Check: Ollama API Failed?",
+      "notesInFlow": true,
+      "notes": "Timouts.. To much Context...Just send default message!"
+    },
+    {
+      "parameters": {
+        "jsCode": "const temperature = $('Build: Humanize Weather Data').first().json.temperature;\n\nconst language =\n  $('Get: Workflow Constants 1').first().json.config.language || 'en';\n\nconst defaultTelegramReminder = {\n  en: `\nDRINK WATER ‼️‼️‼️\n\nIT'S TIME TO TAKE A GOOD SIP!\n\nI can tell you a lot about why hydration is important—and I will.\n\nYour body is about 60% water – imagine how important it is to maintain that level 💧 Regular hydration keeps you fit, focused, and your skin glowing. Remember:\n\nWater supports your concentration 🧠\nIt helps prevent fatigue 💪\nAnd keeps your skin healthy ✨\n\nSo grab your glass and give your body the hydration it deserves!\n`.trim(),\n\n  de: `\nTRINK WASSER ‼️‼️‼️\n\nES IST WIEDER ZEIT EINEN GUTEN SCHLUCK ZU TRINKEN!\n\nIch kann dir viel darüber erzählen, wie wichtig Wasser ist – und das tue ich auch.\n\nDein Körper besteht zu etwa 60% aus Wasser – stell dir vor, wie wichtig es ist, diesen Level zu halten 💧 Regelmäßiges Trinken hält dich fit, fokussiert und sorgt für einen strahlenden Teint. Denk dran:\n\nWasser unterstützt deine Konzentration 🧠\nEs hilft, Müdigkeit vorzubeugen 💪\nUnd hält deine Haut geschmeidig ✨\n\nAlso greif jetzt zu deinem Glas und versorg deinen Körper mit der Feuchtigkeit, die er verdient!\n`.trim()\n};\n\nconst defaultTelegramReminderHOT = {\n  en: `\nDRINK WATER ‼️‼️‼️\n\nIT'S EXTREMELY HOT TODAY 🔥\n\nOver ${temperature}°C outside!\n\nI can tell you a lot about why hydration is important—and I will.\n\nYour body is about 60% water – imagine how important it is to maintain that level 💧 Regular hydration keeps you fit, focused, and your skin glowing. Remember:\n\nWater supports your concentration 🧠\nIt helps prevent fatigue 💪\nAnd keeps your skin healthy ✨\n\nSo grab your glass and hydrate right now!\n`.trim(),\n\n  de: `\nTRINK WASSER ‼️‼️‼️\n\nHEUTE IST ES VERDAMMT HEIß 🔥\n\nÜber ${temperature}°C draußen!\n\nIch kann dir viel darüber erzählen, wie wichtig Wasser ist – und das tue ich auch.\n\nDein Körper besteht zu etwa 60% aus Wasser – stell dir vor, wie wichtig es ist, diesen Level zu halten 💧 Regelmäßiges Trinken hält dich fit, fokussiert und sorgt für einen strahlenden Teint. Denk dran:\n\nWasser unterstützt deine Konzentration 🧠\nEs hilft, Müdigkeit vorzubeugen 💪\nUnd hält deine Haut geschmeidig ✨\n\nAlso greif jetzt sofort zu deinem Glas!\n`.trim()\n};\n\nconst config = $('Get: Workflow Constants 1').first().json.config;\nconst isHot =\n  $('Build: Humanize Weather Data').first().json.success &&\n  temperature > config.temperatureHot;\n\nconst text = isHot\n  ? defaultTelegramReminderHOT[language] || defaultTelegramReminderHOT.en\n  : defaultTelegramReminder[language] || defaultTelegramReminder.en;\n\nreturn [{\n  json: {\n    response: text\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        368
+      ],
+      "id": "6b645515-56b0-44d1-a345-b183803bc2ca",
+      "name": "Build: Default Reminder Message"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{$env[\"TELEGRAM_BOT_TOKEN\"]}}/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{$env[\"TELEGRAM_CHAT_ID\"]}}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.response }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        384,
+        384
+      ],
+      "id": "78ce19c6-a153-48ba-83e8-9b7e81903db0",
+      "name": "Telegram API: Send Reminder Message"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {    \n    reply_markup: JSON.stringify({\n      inline_keyboard: [\n        [\n          {\n            text: \"250ml\",\n            callback_data: \"250\"\n          },\n          {\n            text: \"500ml\",\n            callback_data: \"500\"\n          },\n          {\n            text: \"750ml\",\n            callback_data: \"750\"\n          },\n          {\n            text: \"später..\",\n            callback_data: \"0\"\n          }\n        ]\n      ]\n    })\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        384
+      ],
+      "id": "72b6719d-fd15-4933-8856-43f656977360",
+      "name": "Build: Callback reply_markup",
+      "notes": "reply_markup data creation"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n\n// this flag indicates Messages & Callback Handling to skip older messages \ndata.firstMainRunDone = true;\n\nconst now = new Date();\n\ndata.pendingReminders.push({\n  messageId: $('Telegram API: Send Callback Message').first().json.result.message_id,\n  chatId: $('Telegram API: Send Callback Message').first().json.result.chat.id, \n  confirmed: false,\n  sentAt:now.getTime(),\n  sentAtReadable:\n    now.toLocaleString(\n      'de-DE',\n      {\n        dateStyle: 'medium',\n        timeStyle: 'medium'\n      }\n    )  \n});\n \nreturn [{\n  json: {  \n    messageId: $('Telegram API: Send Callback Message').first().json.result.message_id,\n    chatId: $('Telegram API: Send Callback Message').first().json.result.chat.id, \n    pendingReminders : data.pendingReminders ,\n    sentAt:Date.now(),\n    callbackPending: data.callbackPending,\n    callbackPendingMsgId: data.callbackPendingMsgId\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        384
+      ],
+      "id": "6270497a-fd09-4462-afe0-3d87b02d80cf",
+      "name": "Buffer: Add Pending Callback Message"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "875d0d87-8285-4baa-a6e9-8e94eb44ee15",
+              "leftValue": "={{ $('Get: Workflow Constants 1').item.json.config.removeUnconfirmedCallbacks }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1712,
+        384
+      ],
+      "id": "bed159e6-5320-4de3-aa2b-6ac72091d51f",
+      "name": "Check: Remove Old Pending Callbacks?",
+      "notesInFlow": true,
+      "notes": "Experimental! -> Telegramm do not like to remove messages ;-)"
+    },
+    {
+      "parameters": {
+        "amount": 0.5
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1888,
+        224
+      ],
+      "id": "cf19a9e1-2171-4f23-b280-f3191ae55025",
+      "name": "Wait: 0.5 Sec",
+      "webhookId": "67783946-408f-4b99-a798-153c4d9640b5",
+      "notes": "telegram async"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n\n// If there are no pending reminders, exit.\nif (!data.pendingReminders || data.pendingReminders.length === 0) {\n  return [];\n}\n\n// Get the latest pending reminder.\nconst latest = data.pendingReminders[data.pendingReminders.length - 1];\n\n// Filter the pending reminders to identify those that should be deleted.\n// These are reminders that are not the latest and are not confirmed.\nconst toDelete = data.pendingReminders.filter((r, i) =>\n  i !== data.pendingReminders.length - 1 && !r.confirmed\n);\n\n// Update the pending reminders array to retain only the latest and confirmed reminders.\ndata.pendingReminders = [\n  latest,\n  ...data.pendingReminders.filter(r => r.confirmed)\n];\n\n// Prepare the items for the n8n deleteMessage operation.\nreturn toDelete.map(r => ({\n  json: {\n    chat_id: r.chatId,\n    message_id: r.messageId\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2064,
+        224
+      ],
+      "id": "b1d27f1c-8a1a-4252-8623-9018206a9d68",
+      "name": "Buffer: Get old Pending Callbacks"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{$env[\"TELEGRAM_BOT_TOKEN\"]}}/editMessageText",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{$env[\"TELEGRAM_CHAT_ID\"]}}"
+            },
+            {
+              "name": "message_id",
+              "value": "={{ $json.message_id }}"
+            },
+            {
+              "name": "text",
+              "value": "- unconfirmed"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2224,
+        224
+      ],
+      "id": "ab3e93e4-e631-47f4-a574-a113962e1c34",
+      "name": "Telegram API: Edit Callback Text",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "content": "### How to setup Environmental Constants\n\n- Define them in a `.env` file located in the same directory as your `docker-compose.yml` file.\n\nExample `.env` file:\n\n      ~/n8n$ cat .env\n      OLLAMA_API_URI=http://your_hostname:11434\n      TELEGRAM_BOT_TOKEN=\"your_bot_token\"\n      TELEGRAM_CHAT_ID=\"your_chat_id\"\n        ...\n\n- To access the constants in your workflows, you also need to modify your docker-compose.yml file:\n\ndocker-compose.yml\n\n     environment:           \n            - N8N_BLOCK_ENV_ACCESS_IN_NODE=false  \n\n     env_file:\n            - .env  \n \n\nDo not forget to restart the n8n container:\n\n      ~/n8n$  docker compose down && docker compose up -d",
+        "height": 544,
+        "width": 544
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -944,
+        -288
+      ],
+      "typeVersion": 1,
+      "id": "f7eef19d-eb53-4dd5-bc6b-c41261e6f02a",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds",
+              "secondsInterval": 15
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -2320,
+        1168
+      ],
+      "id": "d109cc2b-4790-4095-8b5d-3f19586b0e7d",
+      "name": "Trigger: Schedule 30sec"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "mhjxhBEOr6BpQWVY",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/mhjxhBEOr6BpQWVY",
+          "cachedResultName": "DrinkWater CONFIG"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -2096,
+        1744
+      ],
+      "name": "Get: Workflow Constants 3",
+      "id": "d8ebc2bd-544a-4cee-ad68-0682d72b016e"
+    },
+    {
+      "parameters": {
+        "amount": 0.2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1872,
+        1168
+      ],
+      "id": "afa95028-f868-4ce7-8dfe-43662918fdc8",
+      "name": "Wait: 0.2 Sec",
+      "webhookId": "407e2166-31cb-4a79-9d60-6ede30a1de0d",
+      "notesInFlow": true,
+      "notes": "sub workflow don't want to start earlier than main "
+    },
+    {
+      "parameters": {
+        "amount": 0.2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -1872,
+        1744
+      ],
+      "id": "0d7b4f98-def3-452f-8900-42e0355c341d",
+      "name": "Wait: 0.2 Sec1",
+      "webhookId": "075f8aa6-d862-4a0e-ab13-0c813867f4ea",
+      "notes": "wait for main inits stuff.."
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n\ndata.subLock = false;\n\nreturn data;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        1200
+      ],
+      "id": "c28ea2c6-03e6-4a87-b279-0fb9323538cb",
+      "name": "Set: TG Input Callback Unlock "
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n\ndata.subLock = false;\n\nreturn data;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2192,
+        1104
+      ],
+      "id": "fda5ed17-d4a6-4865-afc4-cd54192f6d68",
+      "name": "Set: TG Input Callback Unlock 1",
+      "notesInFlow": true,
+      "notes": "important!"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n\ndata.aggroLock = false;\n\nreturn data;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        1888
+      ],
+      "id": "538411ce-874c-4279-8ca5-b3ce27d4b4da",
+      "name": "Set: Aggressive-Mode Unlock "
+    },
+    {
+      "parameters": {
+        "content": "## Aggressive-Reminder Workflow\n\n### Key Features\n1. The workflow will check how often you missed to answer the Telegram Callbacks \n2. If you didn't answer 4 Callbacks the Workflow starts to spam you with messages! \n     - Each Message gets more aggressive based on your history. For that previous messages are added to the prompt\n3. Every Reminder a Callback is also sent\n     - Answer any of the Callbacks or a valid text input of the water amount will reset aggressive mode\n\n",
+        "height": 416,
+        "width": 656
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2368,
+        1504
+      ],
+      "typeVersion": 1,
+      "id": "1d6aff62-ddbb-4296-8741-f0a253bfa916",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds",
+              "secondsInterval": 25
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -2320,
+        1744
+      ],
+      "id": "a49fe406-711e-40bc-83dd-78ed6742d242",
+      "name": "Trigger: Schedule 25sec"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b0e8098d-c250-4a86-96bb-8c63667fcd6e",
+              "leftValue": "={{ $json.config.aggressiveMode }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1648,
+        1744
+      ],
+      "id": "e0f4173f-b3d5-456e-8215-696b768f0b86",
+      "name": "Check: Aggressive Reminder Enabled?",
+      "retryOnFail": false,
+      "notesInFlow": true,
+      "notes": "Flag located in global config"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n \nconst now = Date.now();\n\n// Get the maximum lock time from the configuration.  This is a safety fallback\n// estimated runtime of this path.\nconst MAX_LOCK_TIME  =  $input.first().json.config.deadLockMaxAggroSec * 1000;  \n\n// wait for variables are initialized in first run\nif (data.initFinished === undefined || data.initFinished === false) {\n  console.log(\"[AGGRO] locked until init ready → exit\");\n  return [];  \n}\n\n// initial Main run still active\nif (data.firstMainRunDone === false) {\n  console.log(\"[AGGRO] firstMainRunDone still on going \") \n  return [];\n}\n\n\n// DEADLOCK RECOVERY\n// If the workflow has crashed or was never released, check if the lock is stale.\nif (data.aggroLock && data.aggroLockTime) {\n  const age = now - data.aggroLockTime;\n  if (age > MAX_LOCK_TIME) {\n    console.log(\"[AGGRO] stale lock detected → resetting lock\");\n    data.aggroLock = false;\n    data.aggroLockTime = null;\n  }\n}\n\n// If the main lock is already active, exit.  This prevents multiple instances\n// of the workflow from running concurrently.\n\nif (data.mainLock) {\n  console.log(\"[AGGRO] mainLock locked → exit\");\n  return [];\n}\n\n// sub active\nif (data.subLock) {\n  console.log(\"[AGGRO] subLock locked → exit\");\n  return [];\n}\n\nif (data.aggroLock) {\n  console.log(\"[AGGRO] aggroLock locked → exit\");\n  return [];\n}\n\n// finally lock this path\ndata.aggroLock = true;\ndata.aggroLockTime = now;\n\nreturn [{ json: $json }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1424,
+        1744
+      ],
+      "id": "f9219f4b-c5d1-4f95-9481-f3c3fa595d52",
+      "name": "Set: Aggressive-Reminder Lock"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n\nconst now = Date.now();\n\n// Get the maximum lock time from the configuration.  This is a safety fallback\n// estimated runtime of the main path.\nconst MAX_LOCK_TIME = $('Get: Workflow Constants 1').first().json.config.deadLockMaxMainSec * 1000;\n\n// DEADLOCK RECOVERY\n// If the workflow has crashed or was never released, check if the lock is stale.\nif (data.mainLock && data.mainLockTime) {\n  // Calculate the age of the lock.\n  const age = now - data.mainLockTime;\n\n  // If the lock is older than the maximum allowed time, it's considered stale.\n  if (age > MAX_LOCK_TIME) {\n    console.log(\"[MAIN] stale lock detected → resetting lock\");\n\n    // Reset the lock to allow the workflow to proceed.\n    data.mainLock = false;\n    data.mainLockTime = null;\n  }\n}\n\n// Check if the initialization is finished. If not, exit.\nif (data.initFinished === undefined || data.initFinished === false) {\n  console.log(\"[MAIN] locked until init ready → exit\");\n  return []; // Exit the workflow.\n}\n\n// If the main lock is already active, exit.  This prevents multiple instances\n// of the workflow from running concurrently.\nif (data.mainLock) {\n  console.log(\"[MAIN] locked → exit\");\n  return []; // Exit the workflow.\n}\n\n// Set the main lock immediately to prevent concurrent execution.\ndata.mainLock = true;\ndata.mainLockTime = now;\n\n// Return an array containing the current JSON data.\nreturn [{ json: $json }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1872,
+        688
+      ],
+      "id": "8bcfd2b2-2566-4a34-bbca-2ad5a20133b1",
+      "name": "Set: Reminder-Workflow Lock "
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "751a0938-bee5-4512-95e7-078af1783580",
+              "leftValue": "={{ $('Get: Workflow Constants 3').item.json.config.sendTelegramDebugAggroMessage }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -976,
+        1568
+      ],
+      "id": "20fe8e17-d242-4dd8-aeb2-c8789167bdd9",
+      "name": "Check: Aggressive Reminder Debugging?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{$env[\"TELEGRAM_BOT_TOKEN\"]}}/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{$env[\"TELEGRAM_CHAT_ID\"]}}"
+            },
+            {
+              "name": "text",
+              "value": "= {{ $json.debugTelegramMessage }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -752,
+        1568
+      ],
+      "id": "a304caea-1ada-4348-9737-f9543213b906",
+      "name": "Telegram API: Send Reminder Status"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n \nconst pendingCount =  data.pendingReminders?.length ?? 0;\n \nif (data.unansweredFlowCount === undefined) {\n  data.unansweredFlowCount = 0;\n}\n\nconst unansweredCount =  data.pendingReminders.filter(r => r.confirmed=== false).length;\nconst maxCount = $('Get: Workflow Constants 3').first().json.config.aggressiveModeIgnoredMax\nconst debugTelegramMessage = `State:\\n -> ${unansweredCount} unanswered  /  ${pendingCount} pending!\\n -> unanswered counter: ${data.unansweredFlowCount}\\n -> Start Aggro Mode after ${maxCount} skipped callbacks\\n -> total drunk amount:  ${data.drunkAmount} ml\\n\\n`;\n \n\nif (data.unansweredFlowCount > maxCount){\nreturn [{\n  json: {\n    triggerAgression: true,\n    pendingReminders : data.pendingReminders,\n     unansweredFlowCount : data.unansweredFlowCount,\n    unansweredCount: unansweredCount,\n    pendingCount : pendingCount,\n    debugTelegramMessage: debugTelegramMessage\n  }\n}];  \n}else{\nreturn [{\n  json: {\n    triggerAgression: false,\n    pendingReminders : data.pendingReminders,\n     unansweredFlowCount : data.unansweredFlowCount,\n    unansweredCount: unansweredCount,\n    pendingCount : pendingCount,\n    debugTelegramMessage: debugTelegramMessage\n  }\n}];  \n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        1744
+      ],
+      "id": "4e2c9cb7-870a-46a4-b8ee-b9ab8b0e4ff1",
+      "name": "Function: Aggressive Reminder Enable?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f65229dc-d123-4263-8dee-e5c448ce7459",
+              "leftValue": "={{ $json.triggerAgression }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -976,
+        1840
+      ],
+      "id": "83e79141-1046-4c71-a4f2-5fbaef999b94",
+      "name": "Function: Trigger Aggressive Reminder?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\nconst language =  $('Get: Workflow Constants 3').first().json.config.language || 'en';\n\n// aggroMessagesHistory will be used to produce more and more aggressive messages from the model\nif (!data.aggroMessagesHistory) {\n  data.aggroMessagesHistory = [];\n}\n\n\nconst messageHistory =  data.aggroMessagesHistory?.join('\\n- ') || '';\n\nconst prompt = `\nErzeuge eine direkte, motivierende Auforderung Wasser zu trinken anhand der bisherige Nachrichten in folgender Sprache / Sprachcode: \"${language}\"\n\naggresive, \nHintergrund User hat die Menge an wasser nicht angegeben, was heißen kann das er nicht getrunken hat!\n\nRegeln:\n- Wenn es noch keine Bisherige Nachrichten gibt, dann erstelle eine Nachricht z.B.\n  - \"Hast du etwa vergessen Wasser zu trinken? Gib mir Feedback sonst nerve ich!\"\n  - \"Schon wieder vergessen zu antworten?!\"  \n- Werd immer aggressiver mit der Anzahl an bisherigen Nachrichten\n- Der Leser soll merken \"Hey ich sollte die Menege an getrunkenen Wasser eingeben\"\n- Emojis erlaubt, aber sparsam einsetzen\n- 1 bis 2 kurze Sätze\n- Keine Begrüßung am Ende\n- Keine Alternativen\n- Keine Meta-Erklärung\n- Keine Einleitung oder Erklärung\n- Gib ausschließlich die fertige Nachricht zurück\n- denk an die Übersetzung: / Sprachcode: \"${language}\"\n\nBisherige Nachrichten:\n- ${messageHistory}\n`.trim();  \n\n \nreturn [{\n  json: {\n    prompt:prompt   \n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        1760
+      ],
+      "id": "3dc16178-45fe-4f3c-96b0-696401ecd380",
+      "name": "Build: Prompt for Aggressive Message "
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n\n// create History \nif (!data.modelMessagesHistory) {\n  data.modelMessagesHistory = [];\n}\n\n// Max Buffer Size\nconst maxSize =  $('Get: Workflow Constants 1').first().json.config.modelMessagesHistoryMax || 10;\n\n// Message from model\nconst message = $('Ollama API: Get LLM Response').first().json.response; \n// skip empty messages\nif (message?.trim()) {\n\n  // if full, remove oldest\n  if (data.modelMessagesHistory.length >= maxSize) {\n    data.modelMessagesHistory.shift();\n  }\n\n  // add new message\n  data.modelMessagesHistory.push(message.trim());\n}\n\nreturn [{\n  json: {\n    message,\n    historySize: data.modelMessagesHistory.length,\n    history: data.modelMessagesHistory\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        384
+      ],
+      "id": "9404c381-5307-4a7b-8b5e-f2e1ff6ea1db",
+      "name": "Ringbuffer: Add latest Reminder Message",
+      "notesInFlow": true,
+      "notes": "History is used to generate better model outputs and more different messages"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n\nconst maxSize = $('Get: Workflow Constants 3').first().json.config.modelMessagesHistoryMax || 6;\n\n// aggroMessagesHistory will be used to produce more and more aggressive messages from the model \nif (!data.aggroMessagesHistory) {\n  data.aggroMessagesHistory = [];\n}\nconst ollamaMessage = $input.first().json.response;\nif (ollamaMessage?.trim()) {\n\n  // remove older ones..\n  if (data.aggroMessagesHistory.length >= maxSize) {\n    data.aggroMessagesHistory.shift();\n  }\n\n  // add new message\n  data.aggroMessagesHistory.push(ollamaMessage.trim());\n}\nreturn [{\n  json: {  \n    ollamaMessage :ollamaMessage,\n    aggroMessagesHistory: data.aggroMessagesHistory\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        1760
+      ],
+      "id": "44cfae67-97d2-417c-9950-071984520bfd",
+      "name": "Ringbuffer: Add latest LLM Message"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{$env[\"TELEGRAM_BOT_TOKEN\"]}}/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{$env[\"TELEGRAM_CHAT_ID\"]}}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.ollamaMessage }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -80,
+        1760
+      ],
+      "id": "47ce24bd-cb97-4248-97e6-0c05cb68bdba",
+      "name": "Telegram API: Send Aggressive Message"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{$env[\"TELEGRAM_BOT_TOKEN\"]}}/sendMessage",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{$env[\"TELEGRAM_CHAT_ID\"]}}"
+            },
+            {
+              "name": "reply_markup",
+              "value": "={{ $json.reply_markup }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ \n  ({\n    en: \"How much water have you had today so far❓\",\n    de: \"Wie viel hast du heute schon getrunken❓\"\n  })[$('Get: Workflow Constants 1').first().json.config.language || 'en']\n}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1040,
+        384
+      ],
+      "id": "7b5b6531-30fe-41dd-bb12-ee72f234ec85",
+      "name": "Telegram API: Send Callback Message"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {    \n    reply_markup: JSON.stringify({\n      inline_keyboard: [\n        [\n          {\n            text: \"250ml\",\n            callback_data: \"250\"\n          },\n          {\n            text: \"500ml\",\n            callback_data: \"500\"\n          },\n          {\n            text: \"750ml\",\n            callback_data: \"750\"\n          },\n          {\n            text: \"später..\",\n            callback_data: \"0\"\n          }\n        ]\n      ]\n    })\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        1760
+      ],
+      "id": "4aa1ad5a-c917-41e5-bd25-13264089db4a",
+      "name": "Build: Callback reply_markup 1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{$env[\"TELEGRAM_BOT_TOKEN\"]}}/sendMessage",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{$env[\"TELEGRAM_CHAT_ID\"]}}"
+            },
+            {
+              "name": "reply_markup",
+              "value": "={{ $json.reply_markup }}"
+            },
+            {
+              "name": "text",
+              "value": "{{    ({     en: \"How much water have you had today so far❓\",     de: \"Wie viel hast du heute schon getrunken❓\"   })[$('Get: Workflow Constants 3').first().json.config.language || 'en'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        368,
+        1760
+      ],
+      "id": "8114cd77-f4e5-4baf-a583-ddac2d5e5d46",
+      "name": "Telegram API: Send Callback Message 1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n\ndata.firstMainRunDone = true;\n\nconst now = new Date();\n\ndata.pendingReminders.push({\n  messageId: $('Telegram API: Send Callback Message 1').first().json.result.message_id,\n  chatId: $('Telegram API: Send Callback Message 1').first().json.result.chat.id, \n  confirmed: false,\n  sentAt:now.getTime(),\n  sentAtReadable:\n    now.toLocaleString(\n      'de-DE',\n      {\n        dateStyle: 'medium',\n        timeStyle: 'medium'\n      }\n    )\n  \n});\nconsole.log(data.pendingReminders)\nreturn [{\n  json: {  \n    messageId: $('Telegram API: Send Callback Message 1').first().json.result.message_id,\n    chatId: $('Telegram API: Send Callback Message 1').first().json.result.chat.id, \n    pendingReminders : data.pendingReminders ,\n    sentAt:Date.now(),\n    callbackPending: data.callbackPending,\n    callbackPendingMsgId: data.callbackPendingMsgId\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        1760
+      ],
+      "id": "a76b25d4-ae0a-43fa-99e5-5465e356c51b",
+      "name": "Buffer: Add Pending Callback Message 1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n\nif (data.unansweredFlowCount === undefined) {\n  data.unansweredFlowCount = 0;  \n}\ndata.unansweredFlowCount += 1;\n\nreturn [{\n  json: {  \n   unansweredFlowCount:data.unansweredFlowCount\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        384
+      ],
+      "id": "3694d997-9d62-477d-a4d3-6f8890f06708",
+      "name": "Set: Count Up Unanswered"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n\nif (data.unansweredFlowCount === undefined) {\n  data.unansweredFlowCount = 0;  \n}\ndata.unansweredFlowCount += 1;\n\nreturn [{\n  json: {  \n   unansweredFlowCount:data.unansweredFlowCount\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        1760
+      ],
+      "id": "29021b3d-c7a5-4ea5-b5c5-aaf0af7a66ce",
+      "name": "Set: Count Up Unanswered 1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data =  $getWorkflowStaticData('global');\n\n// variable to store the amount in Milli Liter\nif (data.drunkAmount === undefined) {  data.drunkAmount = 0; }\n                                       \n// store pending Reminder Callbacks -> used to delete unconfirmed ones        \nif (!data.pendingReminders) {data.pendingReminders = [];}\n\n// store telegramm update id as offset -> used to avoid multiple Telegram Updates..\nif (typeof data.offset !== 'number') {  data.offset = 0;}\n\n// store processed telegram Callbacks to avoid multiple Button Clicks\nif (!data.processedCallbacks) { data.processedCallbacks = {};}\n\nif (!data.processedInputs) {  data.processedInputs = [];}\n\n\n// clean up processedCallbacks\nconst keys =  Object.keys(data.processedCallbacks  );\nif (keys.length > 1000) {  data.processedCallbacks = {};}\n\n\nreturn [{\n  json: {\n    offset: data.offset,\n    dailyGoal: data.dailyGoal,\n    drunkAmount: data.drunkAmount\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1424,
+        1168
+      ],
+      "id": "b65488ef-4852-439c-b7e7-2ef2d1a0c635",
+      "name": "Set: Init Input Handler Variables"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n\nconst now = Date.now();\n\n// Get the maximum lock time from the configuration.  This is a safety fallback\n// estimated runtime of this path.\nconst MAX_LOCK_TIME  =  $input.first().json.config.deadLockMaxSubSec * 1000;  \n\n// wait for variables are initialized in first run\nif (data.initFinished === undefined || data.initFinished === false) {\n  console.log(\"[SUB] locked until init ready → exit\");\n  return [];\n  \n}\n\n// DEADLOCK RECOVERY\n// If the workflow has crashed or was never released, check if the lock is stale.\nif (data.subLock && data.subLockTime) {\n  const age = now - data.subLockTime;\n  // Reset the lock to allow the workflow to proceed.\n  if (age > MAX_LOCK_TIME) {\n    console.log(\"[SUB] stale lock detected → resetting lock\");\n    data.subLock = false;\n    data.subLockTime = null;\n  }\n}\n\n// If the main lock is already active, exit.  This prevents multiple instances\n// of the workflow from running concurrently.\nif (data.mainLock) {\n  console.log(\"[SUB] main locked → exit\");\n  return [];\n}\n\nif (data.subLock) {\n  console.log(\"[SUB] sub locked → exit\");\n  return [];\n}\n\n// finally lock this path\ndata.subLock = true;\ndata.subLockTime = now;\n\nreturn [{ json: $json }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1648,
+        1168
+      ],
+      "id": "2cac12c0-ec6d-437d-84fd-36f7cc3f60a2",
+      "name": "Set: Telegram Input Handler Lock "
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{$env[\"TELEGRAM_BOT_TOKEN\"]}}/getUpdates",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "offset",
+              "value": "={{ $json.offset }}"
+            },
+            {
+              "name": "timeout",
+              "value": "10"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1200,
+        1168
+      ],
+      "id": "75de3683-6354-4be4-8f33-c7769ca0a686",
+      "name": "Telegram API: Get Input State"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "callback",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "3acabcdb-329f-49b9-adb9-b1fc04732ce0"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "e0af673d-0a02-4048-a812-65a143577d00",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "=message",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9bbdbef7-0c41-4cac-9e7f-572d0da13b02",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "empty",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -752,
+        1152
+      ],
+      "id": "0d656430-f791-4ae6-9aba-b2b86c07430f",
+      "name": "Route: Text, Button, Empty"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d6ea3e14-e677-4af0-8fab-9c2033731973",
+              "leftValue": "={{ $json.proccessThisReminder }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -304,
+        960
+      ],
+      "id": "b61c26e0-fa04-482a-acae-13a9193565a0",
+      "name": "Check: Is Callback Processed?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data =  $getWorkflowStaticData('global');\n\n// Get id's\nconst callbackId =  $input.first().json.callback_query_id;\nconst messageId =  $input.first().json.message_id;\nconst chat_id = $('Analyze: Text Button Empty Input?').first().json.chat_id;\n\nconst pendingReminder =  data.pendingReminders.find(\n      r =>\n        r.messageId ===\n          messageId &&\n        r.confirmed ===\n          true\n    );\n\nif (callbackId) {\n\n  // already processed\n  if (\n    data.processedCallbacks[\n      callbackId\n    ]\n  ) {\n    return [{\n    json: {\n      proccessThisReminder: false,\n      debug: 'do not exist in processed',\n      processedCallbacks: data.processedCallbacks,\n      pendingReminders: data.pendingReminders,\n      message_id: messageId,\n      callback_query_id: callbackId,\n      chat_id: chat_id\n    }\n  }];;\n  }\n\n  // save\n  data.processedCallbacks[\n    callbackId\n  ] = true;\n}\n\nif (pendingReminder) {\n  return [{\n    json: {\n      proccessThisReminder: false,\n      debug: 'already confirmed',\n      processedCallbacks: data.processedCallbacks,\n      pendingReminders: data.pendingReminders,\n      message_id: messageId,\n      callback_query_id: callbackId,\n      chat_id: chat_id\n    }\n  }];\n}\nreturn [{\n  json: {\n    proccessThisReminder: true,\n      debug: 'do not exist in processed',\n      processedCallbacks: data.processedCallbacks,\n      pendingReminders: data.pendingReminders,\n      message_id: messageId,\n      callback_query_id: callbackId,\n         chat_id: chat_id\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        960
+      ],
+      "id": "c69c4b1b-4eb8-4048-88d8-f2a3ff564896",
+      "name": "Analyze: Get Callback Pending State"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst updates = $json.result || [];\n\n// sometimes telegram get Updates API just returns [] -> skip and try again next round\nif (!updates.length) { \n  return [{ json: { type: \"empty\" }}]\n};\n\n// get the latest item from telegram getUpdates response\nconst last = updates[updates.length - 1];\n\nconst data =  $getWorkflowStaticData('global');\n\n// count up offset\ndata.offset = last.update_id + 1;\n\n// get type (message or callback)\n/* note: callbacks  will apear only in getUpdates when user clicked a button -> if the user skip to click the callback buttons, you can access the callback only by saving the Message ID, when the callback is created !  */\nconst isCallback = !!last.callback_query;\nconst isMessage =  !!last.message?.text; // for debugging purpose\n\nconst chat_id =  last.message?.chat?.id ||  last.callback_query?.message?.chat?.id;\n\n// normal chat message from user or callback answer (button click) from user\nconst input =  last.callback_query?.data ||  last.message?.text;\n\nconst callback_query_id =  last.callback_query?.id; // for debugging purpose\n\n// Message ID (can be used to edit or delete buttons)\nconst message_id =  last.callback_query?.message?.message_id ||  last.message?.message_id;\n\nreturn [{\n  json: {\n    type: isCallback? 'callback': 'message',\n    isCallback,\n    isMessage,\n    input,\n    chat_id,\n    update_id: last.update_id,\n    callback_query_id,\n    message_id\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -976,
+        1168
+      ],
+      "id": "7096e1ed-2cbc-47a5-867d-2f7b46ad179c",
+      "name": "Analyze: Text Button Empty Input?",
+      "notesInFlow": true,
+      "notes": "This script will get User Chat Inputs with /getUpdates Telegram API and will return the latest message which can be\n  -> a normal message: user send a text message\n  -> callback: user click on of the callback buttons -> IMPORTANT: until the user clicks a callback button, the message is invisible with the Telegramm API, this is why we store in as pending and processed callbacks"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{$env[\"TELEGRAM_BOT_TOKEN\"]}}/answerCallbackQuery",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "callback_query_id",
+              "value": "={{ $('Analyze: Get Callback Pending State').item.json.callback_query_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -80,
+        912
+      ],
+      "id": "ba47ea18-d805-44e4-bf9f-d50af4cbb1b2",
+      "name": "Telegram API: Answer Callback Query",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e4d79012-9f45-4fe2-aa31-1630af7f88b5",
+              "leftValue": "={{ $json.error.message }}",
+              "rightValue": "query is too old",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "=",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        144,
+        912
+      ],
+      "id": "23c00eaa-86d0-43b9-bd87-450ba8ba25cd",
+      "name": "Check: Old Query?",
+      "notesInFlow": true,
+      "notes": "Sometimes the id of the callback is \"outdated\" -> telegram Api returns query is too old\nif {{ $('Call DrinkWater CONFIG 1').item.json.config.removeUnconfirmedCallbacks }} is set, we will remove the older callbacks by replacing them -> this is experimental and by default disabled! Telegram do not like to play to much around with changing content or remove them"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "875d0d87-8285-4baa-a6e9-8e94eb44ee15",
+              "leftValue": "={{ $('Get: Workflow Constants 2').item.json.config.removeUnconfirmedCallbacks }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        704,
+        816
+      ],
+      "id": "4aeb0fee-c025-4947-93d8-95456fb0f5e5",
+      "name": "Check: Flag Remove Unconfirmed Callbacks?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{$env[\"TELEGRAM_BOT_TOKEN\"]}}/editMessageText",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{$env[\"TELEGRAM_CHAT_ID\"]}}"
+            },
+            {
+              "name": "message_id",
+              "value": "={{ $('Check: Is Callback Processed?').item.json.message_id }}"
+            },
+            {
+              "name": "text",
+              "value": "- -"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        928,
+        736
+      ],
+      "id": "d09d2910-6e6d-45aa-a3f2-b065b473b4b9",
+      "name": "Telegram API: Replace Unconfirmed Callbacks",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "amount": 0.5
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1152,
+        736
+      ],
+      "id": "57a54a8b-bbef-48b2-96ab-78983d72827b",
+      "name": "Wait: 0.5 Sec1",
+      "webhookId": "e57508ad-7715-4947-9e7a-bda8c6d38971",
+      "notes": "telegram async"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {    \n    reply_markup: JSON.stringify({\n      inline_keyboard: [\n        [\n          {\n            text: \"250ml\",\n            callback_data: \"250\"\n          },\n          {\n            text: \"500ml\",\n            callback_data: \"500\"\n          },\n          {\n            text: \"750ml\",\n            callback_data: \"750\"\n          },\n          {\n            text: \"später..\",\n            callback_data: \"0\"\n          }\n        ]\n      ]\n    })\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        736
+      ],
+      "id": "c9e5eaf7-ab0f-4748-81cc-ff054978f48c",
+      "name": "Build: Callback reply_markup1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{$env[\"TELEGRAM_BOT_TOKEN\"]}}/sendMessage",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{$env[\"TELEGRAM_CHAT_ID\"]}}"
+            },
+            {
+              "name": "reply_markup",
+              "value": "={{ $json.reply_markup }}"
+            },
+            {
+              "name": "text",
+              "value": "{{    ({     en: \"How much water have you had today so far❓\",     de: \"Wie viel hast du heute schon getrunken❓\"   })[$('Get: Workflow Constants 2').first().json.config.language || 'en'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1600,
+        736
+      ],
+      "id": "5747dda4-5684-443b-9074-17f5342877d7",
+      "name": "Telegram API: Send Callback Message "
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n\ndata.firstCallbackOut = true;\n\nconst now = new Date();\n\ndata.pendingReminders.push({\n  messageId: $('Telegram API: Send Callback Message').first().json.result.message_id,\n  chatId: $('Telegram API: Send Callback Message').first().json.result.chat.id,  \n  confirmed: false,\n  sentAt:now.getTime(),\n  sentAtReadable:\n    now.toLocaleString(\n      'de-DE',\n      {\n        dateStyle: 'medium',\n        timeStyle: 'medium'\n      }\n    )\n  \n});\n\nreturn [{\n  json: {  \n    messageId: $('Telegram API: Send Callback Message').first().json.result.message_id,\n    chatId: $('Telegram API: Send Callback Message').first().json.result.chat.id, \n    pendingReminders : data.pendingReminders ,\n    sentAt:Date.now(),\n    callbackPending: data.callbackPending,\n    callbackPendingMsgId: data.callbackPendingMsgId\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        736
+      ],
+      "id": "f7dc5521-5999-49e9-a057-fd1b1b67643c",
+      "name": "Buffer: Add Pending Callback Message "
+    },
+    {
+      "parameters": {
+        "jsCode": "const language =\n  $('Get: Workflow Constants 2').first().json.config.language || 'en';\n\nconst prompt = `\nAufgabe:\nAnalysiere die User-Nachricht im Kontext eines Trinkwasser-Trackers und extrahiere die getrunkene Wassermenge in Milliliter (mL).\n\nUser-Nachricht:\n\"${$('Analyze: Text Button Empty Input?').first().json.input}\" \n \nRegeln:\n- Verstehe Mengenangaben in mL oder Liter\n- Wandle Liter immer in mL um\n- Verwende diese Annahmen:\n  - 1 Glas Wasser = 250 mL\n  - 1 Tasse = 200 mL\n  - 1 Flasche Wasser = 500 mL (wenn keine Größe genannt wird)\n- Rechne Mehrfachangaben korrekt um\n- Dezimalzahlen erkennen\n- Deutsche und englische Schreibweisen verstehen\n\nBeispiele:\n\"Ich habe 250ml getrunken\"\n→ 250\n\n\"Ich habe 0,25 Liter getrunken\"\n→ 250\n\n\"Ich habe 2 Gläser Wasser getrunken\"\n→ 500\n\n\"Ein Glas Wasser\"\n→ 250\n\n\"1 glas\"\n→ 250\n\n\"0.5L\"\n→ 500\n\n\"500 ml\"\n→ 500\n\nAntwortformat:\nGib IMMER ausschließlich valides JSON zurück.\n\nBei Erfolg:\n{\n  \"success\": true,\n  \"amount\": 250,\n  \"message\": \"Verstanden 👍 Ich füge 250 mL hinzu!\" -> übersetzen je nach Sprachcode ${language}\n}\n\nWenn keine sichere Wassermenge erkannt wurde:\n{\n  \"success\": false,\n  \"amount\": 0,\n  \"message\": \"Leider habe ich deine Eingabe nicht verstanden.\"  -> übersetzen je nach Sprachcode ${language}\n}\n\nWICHTIG:\n- Nur valides JSON\n- Nur doppelte Anführungszeichen\n- Keine Markdown-Blöcke\n- Keine Erklärung\n- Keine zusätzlichen Felder\n- Niemals Text außerhalb des JSON\n- Antwort übersetzen je nach Sprachcode ${language}\n`.trim();\n  \nreturn [{\n  json: {\n    prompt: prompt    \n  }\n}];\n\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        1424
+      ],
+      "id": "9e6a4420-4d92-4156-bf3a-973237935f42",
+      "name": "Build: Prompt Get Amount From Input"
+    },
+    {
+      "parameters": {
+        "jsCode": "const language =\n  $('Get: Workflow Constants 2').first().json.config.language || 'en';\n\nconst raw = $input.first().json.response;\n\nconst messages = {\n  en: {\n    parseFailed: \"Sorry, I couldn't understand that!\",\n  },\n  de: {\n    parseFailed: \"Ich habe dich leider nicht verstanden!\",\n  }\n};\n\nconst msg = messages[language] || messages.en;\n\ntry {\n\n  const cleaned =\n    raw\n      .replace(/```json\\s*/g, '')\n      .replace(/```/g, '')\n      .trim();\n\n  const parsed = JSON.parse(cleaned);\n\n  if (Number(parsed.amount) == 0) {\n    return [{\n      json: {\n        success: false,\n        message: msg.parseFailed,\n        error: 'parse_failed',\n        amount: 0,\n        raw\n      }\n    }];\n  }\n\n  return [{\n    json: {\n      success: true,\n      amount: Number(parsed.amount),\n      message: parsed.message\n    }\n  }];\n\n} catch (err) {\n\n  return [{\n    json: {\n      success: false,\n      message: msg.parseFailed,\n      error: 'parse_failed',\n      amount: 0,\n      raw\n    }\n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        1424
+      ],
+      "id": "0ba37578-9653-41f4-9913-4c7dd42c0fdf",
+      "name": "Build: Answer from Input Analysis"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b0e8098d-c250-4a86-96bb-8c63667fcd6e",
+              "leftValue": "={{ $('Get: Workflow Constants 2').item.json.config.analyzeUserInput }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -80,
+        1440
+      ],
+      "id": "47748c08-e20c-4c90-a70a-d21386f693f7",
+      "name": "Check: Analyze with LLM"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global'  );\n/*We do not want to response to older user text messages before the first callback was sent, so we will skip them while main run is not finished  -> data.firstMainRunDone=false\n*/\nreturn [{\n  json: {\n    firstMainRunDone : data.firstMainRunDone\n  }\n}];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        1392
+      ],
+      "id": "2a5dd0e2-a790-4db3-b657-1fc7c035dd17",
+      "name": "Get: Initial Reminder Path Finished"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "482c245e-a1ff-4726-b8af-e8eef287c12c",
+              "leftValue": "={{ $json.firstMainRunDone }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -304,
+        1392
+      ],
+      "id": "053494ee-79c8-4946-a745-d2125613b6b1",
+      "name": "Check: Initial Reminder Path Finished?",
+      "notesInFlow": true,
+      "notes": "We do not want to response to older user text messages before the first callback was sent, so we will skip inputs while reminder path is not finished "
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env[\"OLLAMA_API_URI\"]}}/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n \"model\": \"{{$('Get: Workflow Constants 1').first().json.config.ollamaModel }}\",\n \"prompt\": {{ JSON.stringify($json.prompt)}},\n \"stream\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -304,
+        688
+      ],
+      "id": "369150e3-50e5-4180-aa23-955ffb1e7c19",
+      "name": "Ollama API: Get LLM Response",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env[\"OLLAMA_API_URI\"]}}/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n \"model\": \"{{$('Get: Workflow Constants 2').first().json.config.ollamaModel }}\",\n \"prompt\": {{ JSON.stringify($json.prompt )}},\n \"stream\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        368,
+        1424
+      ],
+      "id": "ba4b6f7b-0763-4da6-bd27-b0944632b858",
+      "name": "Ollama API: Get LLM Response1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env[\"OLLAMA_API_URI\"]}}/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n \"model\": \"{{$('Get: Workflow Constants 3').first().json.config.ollamaModel }}\",\n \"prompt\": {{ JSON.stringify($json.prompt)}} ,\n \"stream\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -528,
+        1760
+      ],
+      "id": "b2bc2d10-791b-4afc-b6e4-48c8dcd79ce8",
+      "name": "Ollama API: Get LLM Response2",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{$env[\"TELEGRAM_BOT_TOKEN\"]}}/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{$env[\"TELEGRAM_CHAT_ID\"]}}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.message }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        816,
+        1424
+      ],
+      "id": "60ab4e69-c211-438b-b928-84c5ea46261f",
+      "name": "Telegram API: Send Message1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "bcb0e475-ad53-4701-ac74-3995005ca161",
+              "leftValue": "={{ $('Build: Answer from Input Analysis').item.json.success }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1040,
+        1424
+      ],
+      "id": "af4781dc-8754-4903-82f3-d4d09b9c2258",
+      "name": "Check: LLM Parsing Success"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{$env[\"TELEGRAM_BOT_TOKEN\"]}}/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{$env[\"TELEGRAM_CHAT_ID\"]}}"
+            },
+            {
+              "name": "text",
+              "value": "={{ \n  ({\n    en: \"Can not help - just wait for the next reminder!\",\n    de: \"Ich kann dir leider nicht weiterhelfen - warte einfach auf den nächsten Reminder!\"\n  })[$('Get: Workflow Constants 2').first().json.config.language || 'en']\n}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1504,
+        1616
+      ],
+      "id": "64778651-ad98-48d8-a187-d92dfe9af268",
+      "name": "Telegram API: Send Can Not Help"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data =  $getWorkflowStaticData('global');\n\nconst messageId =$('Analyze: Get Callback Pending State').first().json.message_id;\n\nconst chatId =$('Analyze: Get Callback Pending State').first().json.chat_id;\n\n// find item\nconst item =  data.pendingReminders?.find(\n    r =>\n      r.messageId === messageId &&\n      r.chatId === chatId\n  );\n\n// set confirmed true\nif (item) {  item.confirmed = true;}\n\nreturn [{\n  json: {\n    pendingReminders: data.pendingReminders,\n    updated: !!item,\n    item\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        1104
+      ],
+      "id": "f5da6584-7166-4629-84b0-4f004a530101",
+      "name": "Set: Confirm This Callback"
+    },
+    {
+      "parameters": {
+        "jsCode": "const language =\n  $('Get: Workflow Constants 2').first().json.config.language || 'en';\n\nlet drunkAmount = Number($('Analyze: Text Button Empty Input?').first().json.input);\n\nconst messages = {\n  en: {\n    added: (amount) => `✅ ${amount} ml added`,\n    invalid: (amount) => `❌ ${amount} ml added`\n  },\n  de: {\n    added: (amount) => `✅ ${amount} ml hinzugefügt`,\n    invalid: (amount) => `❌ ${amount} ml hinzugefügt`\n  }\n};\n\nconst t = messages[language] || messages.en;\n\nlet text = \"\";\n\nif (drunkAmount > 0) {\n  text = t.added(drunkAmount);\n} else {\n  text = t.invalid(drunkAmount);\n}\n\nreturn [{\n  json: {\n    text,\n    drunkAmount\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        1104
+      ],
+      "id": "68f23baf-bf15-43cd-ab8f-f084ddfc5562",
+      "name": "Build: Message Water Amount Added"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{$env[\"TELEGRAM_BOT_TOKEN\"]}}/editMessageText",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $('Analyze: Text Button Empty Input?').item.json.chat_id }}"
+            },
+            {
+              "name": "message_id",
+              "value": "={{ $('Analyze: Text Button Empty Input?').item.json.message_id }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        880,
+        1104
+      ],
+      "id": "b8f77b18-3f09-4f57-9f2f-90b08014b693",
+      "name": "Telegram API: Replace Callback with Message",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Global workflow state\nconst data = $getWorkflowStaticData('global');\n\n\n// Read input amount\nconst amount = Number($('Build: Message Water Amount Added').first().json.drunkAmount);\n\n\n// Validate input\nif (!Number.isFinite(amount) || amount < 0) { return [{\n    json: {\n      error: true,\n      text:\n        \"Sorry, I couldn't understand that!\"\n    }\n  }];\n}\n\n\n// Load config\nconst config =  $('Get: Workflow Constants 2').first().json.config;\n\nconst dailyGoal =  Number(config.dailyGoal) || 2400;\n\n\n// Init state\nif (!Number.isFinite(data.drunkAmount)) {  data.drunkAmount = 0;}\n\n\n// Update total amount\ndata.drunkAmount += amount;\n\n\n// Calculate progress\nconst remaining =  dailyGoal - data.drunkAmount;\n\nconst goalReached =  data.drunkAmount >= dailyGoal;\n\nconst extraAmount =  Math.max(0, data.drunkAmount - dailyGoal);\n\n\n// Output\nreturn [{\n  json: {\n    success: true,\n    amount,\n    drunkAmount: data.drunkAmount,\n    dailyGoal,\n    remaining,\n    goalReached,\n    extraAmount\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        1104
+      ],
+      "id": "5b4136be-3469-445f-904e-e163b3d95758",
+      "name": "Build: Calculate Drunk Amount "
+    },
+    {
+      "parameters": {
+        "jsCode": "// Global workflow state\nconst data = $getWorkflowStaticData('global');\n\n\n// Read input amount\nconst amount = Number($('Build: Answer from Input Analysis').first().json.amount);\n\n\n// Validate input\nif (!Number.isFinite(amount) || amount < 0) { return [{\n    json: {\n      error: true,\n      text:\n        \"Ich konnte die Wassermenge nicht verstehen 💧\"\n    }\n  }];\n}\n\n\n// Load config\nconst config =  $('Get: Workflow Constants 2').first().json.config;\n\nconst dailyGoal =  Number(config.dailyGoal) || 2400;\n\n\n// Init state\nif (!Number.isFinite(data.drunkAmount)) {  data.drunkAmount = 0;}\n\n\n// Update total amount\ndata.drunkAmount += amount;\n\n\n// Calculate progress\nconst remaining =  dailyGoal - data.drunkAmount;\n\nconst goalReached =  data.drunkAmount >= dailyGoal;\n\nconst extraAmount =  Math.max(0, data.drunkAmount - dailyGoal);\n\n\n// Output\nreturn [{\n  json: {\n    success: true,\n    amount,\n    drunkAmount: data.drunkAmount,\n    dailyGoal,\n    remaining,\n    goalReached,\n    extraAmount\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        1264
+      ],
+      "id": "62d2b079-eb3e-4a66-8f28-8dd49307af8d",
+      "name": "Build: Calculate Drunk Amount 1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const language =\n  $('Get: Workflow Constants 2').first().json.config.language || 'en';\n\n// Input data\nconst {\n  amount,\n  drunkAmount,\n  dailyGoal,\n  remaining,\n  goalReached,\n  extraAmount\n} = $json;\n\nconst t = {\n  en: {\n    skip: \"Okay 😄 I’ll remind you later. Don’t forget to drink water 💧\",\n\n    reachedExact: (dailyGoal) =>\n`🎉🎉🎉\n\nCongratulations!\n\nYou reached your daily goal of ${dailyGoal} ml 👏👏👏\n\nSee you tomorrow!`,\n\n    exceeded: (dailyGoal, extraAmount) =>\n`🎉🎉🎉\n\nGreat job!\n\nYou reached your daily goal of ${dailyGoal} ml and drank ${extraAmount} ml extra.\n\nAmazing work 👏👏👏\n\nSee you tomorrow!`,\n\n    progress: (remaining, dailyGoal) =>\n`🚀🚀🚀 Nice!\n\nOnly ${remaining} ml left to reach your daily goal of ${dailyGoal} ml.`\n  },\n\n  de: {\n    skip: \"Okay 😄 Ich erinnere dich später wieder. Vergiss das Trinken nicht 💧\",\n\n    reachedExact: (dailyGoal) =>\n`🎉🎉🎉\n\nGratulation!\n\nDu hast dein Tagesziel von ${dailyGoal} ml erreicht 👏👏👏\n\nBis morgen!`,\n\n    exceeded: (dailyGoal, extraAmount) =>\n`🎉🎉🎉\n\nGroßartig!\n\nDu hast dein Tagesziel von ${dailyGoal} ml erreicht und sogar ${extraAmount} ml mehr getrunken.\n\nSuper Leistung 👏👏👏\n\nBis morgen!`,\n\n    progress: (remaining, dailyGoal) =>\n`🚀🚀🚀 Klasse!\n\nNoch ${remaining} ml bis zu deinem Tagesziel von ${dailyGoal} ml.`\n  }\n};\n\nconst lang = t[language] || t.en;\n\nlet text = \"\";\n\n// User skipped drinking\nif (amount === 0) {\n  text = lang.skip;\n}\n\n// Daily goal reached\nelse if (goalReached) {\n\n  // Exact goal reached\n  if (extraAmount === 0) {\n    text = lang.reachedExact(dailyGoal);\n  }\n\n  // Goal exceeded\n  else {\n    text = lang.exceeded(dailyGoal, extraAmount);\n  }\n\n}\n\n// Normal progress\nelse {\n  text = lang.progress(remaining, dailyGoal);\n}\n\n// Output\nreturn [{\n  json: {\n    text,\n    amount,\n    drunkAmount,\n    remaining,\n    dailyGoal,\n    goalReached\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        1104
+      ],
+      "id": "0d4f82dd-81ed-4623-8e59-4a58a0314849",
+      "name": "Build: Decision Message"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{$env[\"TELEGRAM_BOT_TOKEN\"]}}/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{$env[\"TELEGRAM_CHAT_ID\"]}}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1552,
+        1104
+      ],
+      "id": "1f20fd8a-608e-45ff-a012-b80f67a7c0c9",
+      "name": "Telegram API: Send Message2",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "// Global workflow state\nconst data = $getWorkflowStaticData('global');\n\n// Read current state\nconst goalReached = $('Build: Decision Message').first().json.goalReached;  ;\n\n// Exit if daily goal not reached\nif (goalReached === false) {\n  return [{\n    json: {\n      goalReached\n    }\n  }];\n}\n\n\n// Reset global state\nObject.keys(data).forEach(key => {\n  delete data[key];\n});\n\n\n\n// Default state\n\nObject.assign(data, {\n  // init\n  initFinished: true,\n  firstMainRunDone: false,\n\n  // reminder state\n  goodMorningFinished: false,\n  goodMorningMessageFinished: false,\n\n  // counters\n  unansweredFlowCount: 0,\n  offset: 0,\n\n  // drink tracking\n  drunkAmount: 0,\n\n  // collections\n  pendingReminders: [],\n  processedCallbacks: {},\n  processedInputs: [],\n\n  // model history\n  aggroMessagesHistory: [],\n  modelMessagesHistory: [],\n\n  // workflow locks\n  mainLock: false,\n  mainLockTime: null,\n\n  subLock: false,\n  subLockTime: null,\n\n  aggroLock: false,\n  aggroLockTime: null\n});\n\n\n\n// Output\nreturn [{\n  json: {\n    goalReached,\n    resetDone: true\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        1104
+      ],
+      "id": "cd13c96f-57ea-449a-bdf2-5698a18a0b28",
+      "name": "Set: Reset Workflow Variables"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $getWorkflowStaticData('global');\n\n/*  stops repetitive prompts asking the user to select a button, as the last input has already been processed.*/\nif (data.unansweredFlowCount === undefined) {\n  data.unansweredFlowCount = 0;  \n}\ndata.unansweredFlowCount = 0;\n\n\nreturn [{\n  json: {  \n   unansweredFlowCount:data.unansweredFlowCount\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1968,
+        1104
+      ],
+      "id": "379214f6-2bbc-488f-9021-65c8f9ffbc9b",
+      "name": "Set: Reset Unanswered Count"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Trigger: Startup": {
+      "main": [
+        [
+          {
+            "node": "Get: .env Constants",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get: Workflow Constants ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get: .env Constants": {
+      "main": [
+        []
+      ]
+    },
+    "Get: Workflow Constants ": {
+      "main": [
+        [
+          {
+            "node": "Set: Init Workflow Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get: Workflow Constants 1": {
+      "main": [
+        [
+          {
+            "node": "Set: Reminder-Workflow Lock ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get: Workflow Constants 2": {
+      "main": [
+        [
+          {
+            "node": "Wait: 0.2 Sec",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Daily Goal Reached": {
+      "main": [
+        [
+          {
+            "node": "Build: Daily Goal Reached Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTPS: Get Geo Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build: Daily Goal Reached Message": {
+      "main": [
+        [
+          {
+            "node": "Telegram API: Send Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram API: Send Message": {
+      "main": [
+        [
+          {
+            "node": "Set: Init Workflow Variables1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Init Workflow Variables": {
+      "main": [
+        [
+          {
+            "node": "Telegram API: Send Startup Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Init Reminder Variables": {
+      "main": [
+        [
+          {
+            "node": "Check: Daily Goal Reached",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Init Workflow Variables1": {
+      "main": [
+        [
+          {
+            "node": "Set: Reminder-Workflow Unlock ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTPS: Get Geo Data": {
+      "main": [
+        [
+          {
+            "node": "HTTPS: Get Weather Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTPS: Get Weather Data": {
+      "main": [
+        [
+          {
+            "node": "Build: Humanize Weather Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build: Humanize Weather Data": {
+      "main": [
+        [
+          {
+            "node": "Build: Prompt for Reminder Message ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger: Schedule Hourly 8 to 22": {
+      "main": [
+        [
+          {
+            "node": "Get: Workflow Constants 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build: Prompt for Reminder Message ": {
+      "main": [
+        [
+          {
+            "node": "Ollama API: Get LLM Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Ollama API Failed?": {
+      "main": [
+        [
+          {
+            "node": "Build: Default Reminder Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram API: Send Reminder Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build: Default Reminder Message": {
+      "main": [
+        [
+          {
+            "node": "Telegram API: Send Reminder Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram API: Send Reminder Message": {
+      "main": [
+        [
+          {
+            "node": "Ringbuffer: Add latest Reminder Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build: Callback reply_markup": {
+      "main": [
+        [
+          {
+            "node": "Telegram API: Send Callback Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buffer: Add Pending Callback Message": {
+      "main": [
+        [
+          {
+            "node": "Set: Count Up Unanswered",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Remove Old Pending Callbacks?": {
+      "main": [
+        [
+          {
+            "node": "Wait: 0.5 Sec",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set: Reminder-Workflow Unlock 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait: 0.5 Sec": {
+      "main": [
+        [
+          {
+            "node": "Buffer: Get old Pending Callbacks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buffer: Get old Pending Callbacks": {
+      "main": [
+        [
+          {
+            "node": "Telegram API: Edit Callback Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram API: Edit Callback Text": {
+      "main": [
+        [
+          {
+            "node": "Set: Reminder-Workflow Unlock 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger: Schedule 30sec": {
+      "main": [
+        [
+          {
+            "node": "Get: Workflow Constants 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get: Workflow Constants 3": {
+      "main": [
+        [
+          {
+            "node": "Wait: 0.2 Sec1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait: 0.2 Sec": {
+      "main": [
+        [
+          {
+            "node": "Set: Telegram Input Handler Lock ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait: 0.2 Sec1": {
+      "main": [
+        [
+          {
+            "node": "Check: Aggressive Reminder Enabled?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger: Schedule 25sec": {
+      "main": [
+        [
+          {
+            "node": "Get: Workflow Constants 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Aggressive Reminder Enabled?": {
+      "main": [
+        [
+          {
+            "node": "Set: Aggressive-Reminder Lock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Aggressive-Reminder Lock": {
+      "main": [
+        [
+          {
+            "node": "Function: Aggressive Reminder Enable?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Reminder-Workflow Lock ": {
+      "main": [
+        [
+          {
+            "node": "Set: Init Reminder Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Aggressive Reminder Debugging?": {
+      "main": [
+        [
+          {
+            "node": "Telegram API: Send Reminder Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function: Aggressive Reminder Enable?": {
+      "main": [
+        [
+          {
+            "node": "Function: Trigger Aggressive Reminder?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check: Aggressive Reminder Debugging?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function: Trigger Aggressive Reminder?": {
+      "main": [
+        [
+          {
+            "node": "Build: Prompt for Aggressive Message ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set: Aggressive-Mode Unlock ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build: Prompt for Aggressive Message ": {
+      "main": [
+        [
+          {
+            "node": "Ollama API: Get LLM Response2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ringbuffer: Add latest Reminder Message": {
+      "main": [
+        [
+          {
+            "node": "Build: Callback reply_markup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ringbuffer: Add latest LLM Message": {
+      "main": [
+        [
+          {
+            "node": "Telegram API: Send Aggressive Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram API: Send Aggressive Message": {
+      "main": [
+        [
+          {
+            "node": "Build: Callback reply_markup 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram API: Send Callback Message": {
+      "main": [
+        [
+          {
+            "node": "Buffer: Add Pending Callback Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build: Callback reply_markup 1": {
+      "main": [
+        [
+          {
+            "node": "Telegram API: Send Callback Message 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram API: Send Callback Message 1": {
+      "main": [
+        [
+          {
+            "node": "Buffer: Add Pending Callback Message 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buffer: Add Pending Callback Message 1": {
+      "main": [
+        [
+          {
+            "node": "Set: Count Up Unanswered 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Count Up Unanswered": {
+      "main": [
+        [
+          {
+            "node": "Check: Remove Old Pending Callbacks?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Count Up Unanswered 1": {
+      "main": [
+        [
+          {
+            "node": "Set: Aggressive-Mode Unlock ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Init Input Handler Variables": {
+      "main": [
+        [
+          {
+            "node": "Telegram API: Get Input State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Telegram Input Handler Lock ": {
+      "main": [
+        [
+          {
+            "node": "Set: Init Input Handler Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram API: Get Input State": {
+      "main": [
+        [
+          {
+            "node": "Analyze: Text Button Empty Input?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route: Text, Button, Empty": {
+      "main": [
+        [
+          {
+            "node": "Analyze: Get Callback Pending State",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get: Initial Reminder Path Finished",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set: TG Input Callback Unlock ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Is Callback Processed?": {
+      "main": [
+        [
+          {
+            "node": "Set: TG Input Callback Unlock ",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram API: Answer Callback Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze: Get Callback Pending State": {
+      "main": [
+        [
+          {
+            "node": "Check: Is Callback Processed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze: Text Button Empty Input?": {
+      "main": [
+        [
+          {
+            "node": "Route: Text, Button, Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram API: Answer Callback Query": {
+      "main": [
+        [
+          {
+            "node": "Check: Old Query?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Old Query?": {
+      "main": [
+        [
+          {
+            "node": "Check: Flag Remove Unconfirmed Callbacks?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set: Confirm This Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Flag Remove Unconfirmed Callbacks?": {
+      "main": [
+        [
+          {
+            "node": "Telegram API: Replace Unconfirmed Callbacks",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set: TG Input Callback Unlock 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram API: Replace Unconfirmed Callbacks": {
+      "main": [
+        [
+          {
+            "node": "Wait: 0.5 Sec1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait: 0.5 Sec1": {
+      "main": [
+        [
+          {
+            "node": "Build: Callback reply_markup1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build: Callback reply_markup1": {
+      "main": [
+        [
+          {
+            "node": "Telegram API: Send Callback Message ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram API: Send Callback Message ": {
+      "main": [
+        [
+          {
+            "node": "Buffer: Add Pending Callback Message ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buffer: Add Pending Callback Message ": {
+      "main": [
+        [
+          {
+            "node": "Set: TG Input Callback Unlock 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build: Prompt Get Amount From Input": {
+      "main": [
+        [
+          {
+            "node": "Ollama API: Get LLM Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build: Answer from Input Analysis": {
+      "main": [
+        [
+          {
+            "node": "Telegram API: Send Message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Analyze with LLM": {
+      "main": [
+        [
+          {
+            "node": "Build: Prompt Get Amount From Input",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram API: Send Can Not Help",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get: Initial Reminder Path Finished": {
+      "main": [
+        [
+          {
+            "node": "Check: Initial Reminder Path Finished?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: Initial Reminder Path Finished?": {
+      "main": [
+        [
+          {
+            "node": "Check: Analyze with LLM",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set: TG Input Callback Unlock ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama API: Get LLM Response": {
+      "main": [
+        [
+          {
+            "node": "Check: Ollama API Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama API: Get LLM Response1": {
+      "main": [
+        [
+          {
+            "node": "Build: Answer from Input Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama API: Get LLM Response2": {
+      "main": [
+        [
+          {
+            "node": "Ringbuffer: Add latest LLM Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram API: Send Message1": {
+      "main": [
+        [
+          {
+            "node": "Check: LLM Parsing Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check: LLM Parsing Success": {
+      "main": [
+        [
+          {
+            "node": "Build: Calculate Drunk Amount 1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set: TG Input Callback Unlock 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram API: Send Can Not Help": {
+      "main": [
+        [
+          {
+            "node": "Set: TG Input Callback Unlock 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Confirm This Callback": {
+      "main": [
+        [
+          {
+            "node": "Build: Message Water Amount Added",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build: Message Water Amount Added": {
+      "main": [
+        [
+          {
+            "node": "Telegram API: Replace Callback with Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram API: Replace Callback with Message": {
+      "main": [
+        [
+          {
+            "node": "Build: Calculate Drunk Amount ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build: Calculate Drunk Amount ": {
+      "main": [
+        [
+          {
+            "node": "Build: Decision Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build: Calculate Drunk Amount 1": {
+      "main": [
+        [
+          {
+            "node": "Build: Decision Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build: Decision Message": {
+      "main": [
+        [
+          {
+            "node": "Telegram API: Send Message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram API: Send Message2": {
+      "main": [
+        [
+          {
+            "node": "Set: Reset Workflow Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Reset Workflow Variables": {
+      "main": [
+        [
+          {
+            "node": "Set: Reset Unanswered Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Reset Unanswered Count": {
+      "main": [
+        [
+          {
+            "node": "Set: TG Input Callback Unlock 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "85373814-2a12-4938-8980-7aa7ed32e4d5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "928a019f367bb574d593e6fbeb50908cd516d63b3de34c260294f7ad4d8077df"
+  },
+  "nodeGroups": [],
+  "id": "8tocv8isCXZE7q84",
+  "tags": []
+}
