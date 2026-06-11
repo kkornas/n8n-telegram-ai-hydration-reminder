@@ -32,6 +32,7 @@ This workflow uses a `.env` file to store sensitive information like API keys an
 3.  **Configure Constants:** Modify the "Set: Constants" node in the "Telegram AI Hydration Reminder CONFIG" sub-workflow:
 
     ```
+    language: 'en', // setup output language 'de' 
     ollamaModel: "gemma3:27b",     // your model ID
     weatherLocation: "Dortmund",     // your location
     temperatureHot: 26,   // temperature limit until triggering a warning (ai generated)
