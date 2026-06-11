@@ -92,4 +92,7 @@ This workflow is designed to *gently* encourage hydration if you miss responding
 *   **Sub-Workflows:** Using sub-workflows makes the overall workflow more organized and easier to maintain.
 *   **Configuration:** Keep your configuration centralized in the `"DrinkWater CONFIG"` sub-workflow.
 
+
 Happy hydrating! 💧
+
+PS:  This was my first n8n project, and what started as a simple problem turned into a much bigger learning experience than I expected. 
