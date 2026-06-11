@@ -29,16 +29,23 @@ This workflow uses a `.env` file to store sensitive information like API keys an
         - .env
     ```
 
-3.  **Configure Constants:** Modify the "Set: Constants" node in the "Telegram AI Hydration Reminder CONFIG" sub-workflow:
+3.  **Download Workflows & Import in n8n:** 
+
+    files: Telegram_AI_Hydration_Reminder_CONFIG.json Telegram_AI_Hydration_Reminder.json
+	
+5.  **Configure Constants:** Modify the "Set: Constants" node in the "Telegram AI Hydration Reminder CONFIG" sub-workflow:
 
     ```
-    language: 'en', // setup output language 'de' 
+    language: 'en', // telegram chat language, currently supported: 'en', 'de'
     ollamaModel: "gemma3:27b",     // your model ID
     weatherLocation: "Dortmund",     // your location
     temperatureHot: 26,   // temperature limit until triggering a warning (ai generated)
     dailyGoal: 3000,	// your daily goal in ml
     ```
+6. **Start:**
 
+   Publish "Telegram AI Hydration Reminder CONFIG" then "Telegram AI Hydration Reminder"
+   
 ## Workflow Overview
 
 This n8n workflow consists of four main parts:
@@ -92,7 +99,6 @@ This workflow is designed to *gently* encourage hydration if you miss responding
 *   **n8n Quirks:** We've all been there! n8n can sometimes have issues with data persistence and caching. This workflow includes some workarounds to help minimize those problems.
 *   **Sub-Workflows:** Using sub-workflows makes the overall workflow more organized and easier to maintain.
 *   **Configuration:** Keep your configuration centralized in the `"DrinkWater CONFIG"` sub-workflow.
-
 
 Happy hydrating! 💧
 
